@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 tide736.net から武庫川一文字・南港・淡路島の
