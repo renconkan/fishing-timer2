@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LURE TIMER</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lure Timer">
+<meta name="theme-color" content="#020d18">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+:root{--deep:#020d18;--mid:#041f33;--biolum:#00e5ff;--biolum-dim:#0097b2;--warn:#ff6b35;--silver:#b0c4d8;--white:#e8f4ff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--deep);min-height:100vh;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;}
+.caustics{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 40% at 30% 20%,rgba(0,229,255,.04) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 70% 70%,rgba(0,150,255,.03) 0%,transparent 70%);animation:caustic 8s ease-in-out infinite alternate;}
+@keyframes caustic{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.08);opacity:1}}
+.bubbles{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.bubble{position:absolute;border-radius:50%;border:1px solid rgba(0,229,255,.2);background:rgba(0,229,255,.03);animation:rise linear infinite;}
+@keyframes rise{0%{transform:translateY(100vh);opacity:0}10%{opacity:1}90%{opacity:.5}100%{transform:translateY(-10vh);opacity:0}}
+.alert-flash{position:fixed;inset:0;background:rgba(0,229,255,.07);pointer-events:none;z-index:999;opacity:0;transition:opacity .1s;}
+.alert-flash.on{opacity:1;}
+.page{position:relative;z-index:10;max-width:420px;margin:0 auto;padding:16px 14px 40px;display:flex;flex-direction:column;}
+.app-title{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:.55em;color:var(--biolum-dim);text-align:center;margin-bottom:12px;}
+.loc-tabs{display:flex;gap:6px;margin-bottom:14px;background:rgba(0,229,255,.03);border:1px solid rgba(0,229,255,.1);border-radius:6px;padding:4px;}
+.loc-tab{flex:1;padding:7px 4px;border:none;border-radius:4px;background:transparent;color:var(--silver);font-size:10px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .2s;text-align:center;line-height:1.3;}
+.loc-tab.active{background:rgba(0,229,255,.15);color:var(--biolum);border:1px solid rgba(0,229,255,.3);}
+.sea-panel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.info-card{background:rgba(4,31,51,.7);border:1px solid rgba(0,229,255,.1);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;}
+.info-card-label{font-size:9px;letter-spacing:.3em;color:var(--biolum-dim);text-transform:uppercase;}
+.info-card-value{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--white);line-height:1;}
+.info-card-sub{font-size:10px;color:var(--silver);}
+.compass-wrap{display:flex;align-items:center;gap:8px;}
+.compass{width:38px;height:38px;position:relative;flex-shrink:0;}
+.compass-ring{width:38px;height:38px;border-radius:50%;border:1px solid rgba(0,229,255,.2);position:absolute;inset:0;}
+.compass-arrow{position:absolute;top:50%;left:50%;width:3px;height:16px;margin-left:-1.5px;margin-top:-14px;transform-origin:bottom center;background:linear-gradient(to bottom,var(--warn) 50%,rgba(176,196,216,.4) 50%);border-radius:2px 2px 0 0;transition:transform .8s cubic-bezier(.34,1.56,.64,1);}
+.current-arrow-wrap{display:flex;align-items:center;gap:10px;}
+.current-arrow{font-size:28px;display:inline-block;transition:transform .6s ease;}
+.tide-section{background:rgba(4,31,51,.7);border:1px solid rgba(0,229,255,.1);border-radius:6px;padding:12px;margin-bottom:12px;}
+.section-label{font-size:9px;letter-spacing:.35em;color:var(--biolum-dim);text-transform:uppercase;margin-bottom:10px;}
+.tide-canvas-wrap{position:relative;height:90px;}
+#tideCanvas{width:100%;height:90px;display:block;}
+.tide-now-line{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,107,53,.8);pointer-events:none;}
+.tide-now-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 6px var(--warn);transform:translate(-50%,-50%);pointer-events:none;}
+.tide-times{display:flex;justify-content:space-between;margin-top:4px;}
+.tide-time-label{font-size:9px;color:rgba(176,196,216,.5);}
+.tide-status{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;}
+.tide-phase-badge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-family:'Noto Sans JP',sans-serif;font-weight:700;border:1px solid;}
+.tide-phase-badge.rising{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.4);color:var(--biolum);}
+.tide-phase-badge.falling{background:rgba(68,136,170,.15);border-color:rgba(68,136,170,.4);color:#6ab4cc;}
+.tide-remain{font-size:11px;color:var(--silver);}
+.tide-remain span{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--white);margin:0 2px;}
+.tide-hilo{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;}
+.hilo-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--silver);background:rgba(0,0,0,.2);border-radius:4px;padding:3px 8px;}
+.hilo-time{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--white);}
+.hilo-cm{font-size:10px;color:var(--silver);}
+.timer-sec{display:flex;flex-direction:column;align-items:center;}
+.ring-wrap{position:relative;width:220px;height:220px;margin:4px 0;}
+.ring-wrap svg{transform:rotate(-90deg);width:220px;height:220px;}
+.ring-bg{fill:none;stroke:rgba(0,229,255,.08);stroke-width:5;}
+.ring-prog{fill:none;stroke:var(--biolum);stroke-width:5;stroke-linecap:round;stroke-dasharray:534;stroke-dashoffset:0;filter:drop-shadow(0 0 6px var(--biolum));transition:stroke-dashoffset .5s linear,stroke .3s;}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.time-display{font-family:'Bebas Neue',sans-serif;font-size:60px;color:var(--biolum);letter-spacing:.04em;line-height:1;text-shadow:0 0 20px rgba(0,229,255,.6);transition:color .3s;}
+.time-display.warn{color:var(--warn);text-shadow:0 0 30px rgba(255,107,53,.5);}
+.time-label{font-size:9px;letter-spacing:.3em;color:var(--silver);text-transform:uppercase;}
+.bg-note{font-size:9px;color:rgba(0,229,255,.5);text-align:center;margin-top:2px;min-height:13px;}
+.status-txt{font-size:10px;letter-spacing:.2em;color:var(--biolum-dim);text-transform:uppercase;height:14px;text-align:center;margin-bottom:8px;}
+.status-txt.run{color:var(--biolum);}
+.status-txt.chg{color:var(--warn);font-size:12px;}
+.interval-sec{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:12px;}
+.interval-label{font-size:9px;letter-spacing:.3em;color:var(--biolum-dim);text-transform:uppercase;}
+.interval-ctrl{display:flex;align-items:center;gap:14px;}
+.ivbtn{width:32px;height:32px;border-radius:50%;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.05);color:var(--biolum);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.iv-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--white);width:70px;text-align:center;}
+.presets{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.preset{padding:3px 10px;border:1px solid rgba(0,229,255,.2);border-radius:20px;background:transparent;color:var(--silver);font-size:11px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;}
+.preset:hover,.preset.active{background:rgba(0,229,255,.1);border-color:var(--biolum);color:var(--biolum);}
+.btn-row{display:flex;gap:10px;width:100%;justify-content:center;margin-bottom:12px;}
+.btn-main{flex:1;max-width:150px;height:48px;border:none;border-radius:4px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.2em;cursor:pointer;transition:all .15s;}
+.btn-start{background:var(--biolum);color:var(--deep);box-shadow:0 0 20px rgba(0,229,255,.3);}
+.btn-reset{background:transparent;border:1px solid rgba(176,196,216,.3);color:var(--silver);}
+.divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.15),transparent);margin:8px 0 12px;}
+.counter-sec{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
+.counter-label{font-size:9px;letter-spacing:.3em;color:var(--biolum-dim);text-transform:uppercase;}
+.counter-disp{display:flex;align-items:baseline;gap:5px;}
+.counter-num{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--biolum);text-shadow:0 0 20px rgba(0,229,255,.3);line-height:1;}
+.counter-unit{font-size:11px;color:var(--silver);}
+.history{margin-top:8px;width:100%;max-height:60px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.hist-item{font-size:10px;color:rgba(176,196,216,.5);text-align:center;animation:fi .3s;}
+@keyframes fi{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
+.data-note{text-align:center;font-size:9px;color:rgba(176,196,216,.3);letter-spacing:.1em;margin-top:16px;}
+</style>
+</head>
+<body>
+<div class="caustics"></div>
+<div class="bubbles" id="bubbles"></div>
+<div class="alert-flash" id="alertFlash"></div>
+<div class="page">
+  <div class="app-title">🎣 LURE CHANGE TIMER</div>
+  <div class="loc-tabs">
+    <button class="loc-tab active" data-loc="mukogawa">武庫川<br>一文字</button>
+    <button class="loc-tab" data-loc="nanko">南港<br>魚つり園</button>
+    <button class="loc-tab" data-loc="awaji">淡路島</button>
+  </div>
+  <div class="sea-panel">
+    <div class="info-card">
+      <div class="info-card-label">風向き / 風速</div>
+      <div class="compass-wrap">
+        <div class="compass"><div class="compass-ring"></div><div class="compass-arrow" id="windArrow"></div></div>
+        <div><div class="info-card-value" id="windDir">—</div><div class="info-card-sub" id="windSpd">— m/s</div></div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-label">潮の流れ</div>
+      <div class="current-arrow-wrap">
+        <div class="current-arrow" id="currArrow">→</div>
+        <div><div class="info-card-value" id="currDir">—</div><div class="info-card-sub" id="currSpd">— kt</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tide-section">
+    <div class="section-label" id="tideLabel">タイドグラフ（読込中…）</div>
+    <div class="tide-canvas-wrap">
+      <canvas id="tideCanvas"></canvas>
+      <div class="tide-now-line" id="tideNowLine"></div>
+      <div class="tide-now-dot" id="tideNowDot"></div>
+    </div>
+    <div class="tide-times">
+      <span class="tide-time-label">0:00</span><span class="tide-time-label">6:00</span>
+      <span class="tide-time-label">12:00</span><span class="tide-time-label">18:00</span>
+      <span class="tide-time-label">24:00</span>
+    </div>
+    <div class="tide-status">
+      <div class="tide-phase-badge rising" id="phaseBadge">
+        <span id="phaseArrow">↑</span><span id="phaseLabel">上げ潮</span>
+        <span id="phaseElapsed" style="font-size:11px;opacity:.8;margin-left:2px;">—分</span>
+      </div>
+      <div class="tide-remain">転流まで <span id="phaseRemain">—</span> 分</div>
+    </div>
+    <div class="tide-hilo" id="hiloBox"></div>
+  </div>
+  <div class="timer-sec">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 190 190">
+        <circle class="ring-bg" cx="95" cy="95" r="85"/>
+        <circle class="ring-prog" id="ringProg" cx="95" cy="95" r="85"/>
+      </svg>
+      <div class="ring-center">
+        <div class="time-display" id="timeDsp">20:00</div>
+        <div class="time-label">次のチェンジまで</div>
+      </div>
+    </div>
+    <div class="bg-note" id="bgNote"></div>
+    <div class="status-txt" id="statusTxt">タイマーを開始してください</div>
+  </div>
+  <div class="interval-sec">
+    <div class="interval-label">インターバル（分）</div>
+    <div class="interval-ctrl">
+      <button class="ivbtn" id="decBtn">−</button>
+      <div class="iv-val" id="ivVal">20</div>
+      <button class="ivbtn" id="incBtn">＋</button>
+    </div>
+    <div class="presets">
+      <button class="preset" data-v="5">5分</button><button class="preset" data-v="10">10分</button>
+      <button class="preset" data-v="15">15分</button><button class="preset active" data-v="20">20分</button>
+      <button class="preset" data-v="30">30分</button><button class="preset" data-v="45">45分</button>
+      <button class="preset" data-v="60">1時間</button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-main btn-start" id="startBtn">START</button>
+    <button class="btn-main btn-reset" id="resetBtn">RESET</button>
+  </div>
+  <div class="divider"></div>
+  <div class="counter-sec">
+    <div class="counter-label">ルアーチェンジ回数</div>
+    <div class="counter-disp"><div class="counter-num" id="cntNum">0</div><div class="counter-unit">回</div></div>
+    <div class="history" id="histBox"></div>
+  </div>
+  <div class="data-note" id="dataNote">潮汐データ読込中…</div>
+</div>
+<script>
+// 泡
+const bEl=document.getElementById('bubbles');
+for(let i=0;i<14;i++){const b=document.createElement('div');b.className='bubble';const s=4+Math.random()*10;b.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;animation-duration:${10+Math.random()*18}s;animation-delay:${Math.random()*14}s;`;bEl.appendChild(b);}
+
+// ===== 場所ベースデータ（風・潮流）=====
+const LOC={
+  mukogawa:{name:'武庫川一文字',
+    windDeg:[200,210,215,200,190,180,175,170,165,160,160,155,150,150,155,160,170,175,180,190,200,210,215,210],
+    windSpd:[3,3,4,4,5,5,6,7,7,6,6,5,5,4,4,4,5,5,5,4,4,3,3,3],
+    currDir:['東','東','東北東','北東','北','北','北西','西','西','南西','南','南','南東','東','東','東','東北東','北東','北','北西','西','西','南西','南'],
+    currDeg:[90,90,70,45,0,0,315,270,270,225,180,180,135,90,90,90,70,45,0,315,270,270,225,180],
+    currSpd:[0.8,0.9,1.0,1.1,1.2,1.1,1.0,0.9,0.8,0.9,1.0,1.1,1.2,1.1,1.0,0.9,1.0,1.1,1.2,1.1,1.0,0.9,0.8,0.7],
+    fallTide:[60,55,50,60,80,110,145,170,180,175,155,125,90,65,55,60,80,110,145,175,185,175,150,100],
+  },
+  nanko:{name:'南港魚つり園',
+    windDeg:[220,225,230,220,210,200,190,185,180,175,170,165,160,158,160,165,175,180,185,195,210,220,225,222],
+    windSpd:[2,2,3,3,4,5,5,6,6,5,5,4,4,3,3,3,4,4,5,4,3,3,2,2],
+    currDir:['南東','南','南','南西','西','西','北西','北','北','北東','東','東','東南','南東','南東','南','南西','西','北西','北','北東','東','東南','南東'],
+    currDeg:[135,180,180,225,270,270,315,0,0,45,90,90,120,135,135,180,225,270,315,0,45,90,120,135],
+    currSpd:[0.6,0.7,0.8,0.9,1.0,1.0,0.9,0.8,0.7,0.8,0.9,1.0,1.0,0.9,0.8,0.7,0.8,0.9,1.0,0.9,0.8,0.7,0.6,0.5],
+    fallTide:[55,50,48,55,75,100,135,162,175,170,148,118,85,60,52,55,75,105,138,168,178,168,142,95],
+  },
+  awaji:{name:'淡路島',
+    windDeg:[250,255,260,255,245,230,215,205,200,195,190,185,180,178,180,185,195,205,215,230,245,255,260,258],
+    windSpd:[5,5,6,6,7,8,8,9,9,8,7,7,6,5,5,5,6,7,8,8,7,6,5,5],
+    currDir:['北西','北','北','北東','東','東','東南','南','南','南西','西','西','北西','北','北','北東','東','東南','南','南西','西','北西','北','北東'],
+    currDeg:[315,0,0,45,90,90,135,180,180,225,270,270,315,0,0,45,90,135,180,225,270,315,0,45],
+    currSpd:[1.2,1.3,1.4,1.5,1.6,1.5,1.4,1.3,1.2,1.3,1.4,1.5,1.6,1.5,1.4,1.3,1.4,1.5,1.6,1.5,1.4,1.3,1.2,1.1],
+    fallTide:[80,70,62,70,95,130,168,195,205,198,172,138,100,72,62,68,95,130,168,198,208,196,165,115],
+  },
+};
+
+// tide_data.json から取得したリアルデータ
+let TIDE_DATA = null;
+
+const WJ=['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+function d2jp(d){return WJ[Math.round(d/22.5)%16];}
+function lerp(a,b,t){return a+(b-a)*t;}
+function getHF(){const n=new Date();return n.getHours()+n.getMinutes()/60;}
+function interp(arr,hf){const h=Math.floor(hf)%24,t=hf-Math.floor(hf);return lerp(arr[h],arr[(h+1)%24],t);}
+function interpDeg(arr,hf){const h=Math.floor(hf)%24,t=hf-Math.floor(hf);let a=arr[h],b=arr[(h+1)%24],d=b-a;if(d>180)d-=360;if(d<-180)d+=360;return(a+d*t+360)%360;}
+
+// ===== tide_data.json 読込 =====
+async function loadTideJson(){
+  try {
+    const res = await fetch('tide_data.json?_=' + Date.now());
+    if(!res.ok) throw new Error('not found');
+    TIDE_DATA = await res.json();
+    document.getElementById('dataNote').textContent =
+      `潮汐データ：tide736.net実データ（${TIDE_DATA.date}）`;
+    drawTide(curLoc);
+  } catch(e) {
+    document.getElementById('dataNote').textContent = '潮汐データ：参考値（実データ未取得）';
+    drawTide(curLoc);
+  }
+}
+
+// 現在の潮位を分単位データから補間
+function getTideAtMin(locKey, minOfDay) {
+  if (!TIDE_DATA || !TIDE_DATA.locations[locKey] || TIDE_DATA.locations[locKey].error) return null;
+  const pts = TIDE_DATA.locations[locKey].tide_minutes;
+  if (!pts || pts.length === 0) return null;
+  // 前後の点を探して線形補間
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (pts[i].min <= minOfDay && minOfDay <= pts[i+1].min) {
+      const t = (minOfDay - pts[i].min) / (pts[i+1].min - pts[i].min);
+      return lerp(pts[i].cm, pts[i+1].cm, t);
+    }
+  }
+  return pts[pts.length-1].cm;
+}
+
+// ===== タイドグラフ Canvas =====
+const tc=document.getElementById('tideCanvas');
+const ctx=tc.getContext('2d');
+
+function drawTide(locKey){
+  const W=tc.offsetWidth||360, H=90;
+  tc.width=W; tc.height=H;
+
+  // データソース決定
+  let data24 = null; // 24点配列
+  let useReal = false;
+
+  if (TIDE_DATA && TIDE_DATA.locations[locKey] && !TIDE_DATA.locations[locKey].error) {
+    const pts = TIDE_DATA.locations[locKey].tide_minutes;
+    if (pts && pts.length > 0) {
+      // 10分刻みデータから1時間ごと24点を生成
+      data24 = [];
+      for (let h = 0; h < 24; h++) {
+        data24.push(Math.round(getTideAtMin(locKey, h * 60)));
+      }
+      useReal = true;
+    }
+  }
+  if (!data24) data24 = LOC[locKey].fallTide;
+
+  document.getElementById('tideLabel').textContent =
+    useReal ? `タイドグラフ（本日・実データ）` : 'タイドグラフ（参考値）';
+
+  const minV=Math.min(...data24)-20, maxV=Math.max(...data24)+20;
+  const pad={l:6,r:6,t:8,b:6};
+  const xAt=i=>pad.l+(i/24)*(W-pad.l-pad.r);
+  const yAt=v=>pad.t+(1-(v-minV)/(maxV-minV))*(H-pad.t-pad.b);
+
+  // グリッド
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,229,255,.06)';ctx.lineWidth=1;
+  [0,6,12,18,24].forEach(h=>{ctx.beginPath();ctx.moveTo(xAt(h),pad.t);ctx.lineTo(xAt(h),H-pad.b);ctx.stroke();});
+
+  // 実データの場合は10分刻みで滑らかに描画
+  const drawPoints = useReal
+    ? TIDE_DATA.locations[locKey].tide_minutes
+        .filter(p=>p.min<=1440)
+        .map(p=>({x:xAt(p.min/60), y:yAt(p.cm)}))
+    : Array.from({length:25},(_,i)=>({x:xAt(i),y:yAt(data24[i%24])}));
+
+  // グラデ塗り
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(0,229,255,.3)');
+  grad.addColorStop(1,'rgba(0,229,255,.02)');
+  ctx.beginPath();
+  ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+  for(let i=1;i<drawPoints.length;i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+  ctx.lineTo(xAt(24),H-pad.b);ctx.lineTo(xAt(0),H-pad.b);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+
+  // 曲線
+  ctx.beginPath();
+  ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+  for(let i=1;i<drawPoints.length;i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+  ctx.strokeStyle='rgba(0,229,255,.85)';ctx.lineWidth=2;ctx.stroke();
+
+  // 満潮・干潮マーク＆時刻表示
+  const hiloEl=document.getElementById('hiloBox');
+  let hiloItems=[];
+
+  if(useReal && TIDE_DATA.locations[locKey].flood){
+    const floods=TIDE_DATA.locations[locKey].flood||[];
+    const ebbs  =TIDE_DATA.locations[locKey].ebb  ||[];
+    floods.forEach(f=>{
+      const [hh,mm]=f.time.split(':').map(Number);
+      const hf=(hh*60+mm)/60;
+      ctx.fillStyle='rgba(0,229,255,.9)';
+      ctx.beginPath();ctx.arc(xAt(hf),yAt(f.cm)-6,3,0,Math.PI*2);ctx.fill();
+      hiloItems.push({type:'flood',time:f.time,cm:f.cm});
+    });
+    ebbs.forEach(e=>{
+      const [hh,mm]=e.time.split(':').map(Number);
+      const hf=(hh*60+mm)/60;
+      ctx.fillStyle='rgba(100,180,200,.9)';
+      ctx.beginPath();ctx.arc(xAt(hf),yAt(e.cm)+6,3,0,Math.PI*2);ctx.fill();
+      hiloItems.push({type:'ebb',time:e.time,cm:e.cm});
+    });
+  } else {
+    for(let i=1;i<23;i++){
+      if(data24[i]>data24[i-1]&&data24[i]>data24[i+1]){
+        ctx.fillStyle='rgba(0,229,255,.8)';ctx.beginPath();ctx.arc(xAt(i),yAt(data24[i])-5,3,0,Math.PI*2);ctx.fill();
+        hiloItems.push({type:'flood',time:`${String(i).padStart(2,'0')}:00`,cm:data24[i]});
+      }
+      if(data24[i]<data24[i-1]&&data24[i]<data24[i+1]){
+        ctx.fillStyle='rgba(100,180,200,.8)';ctx.beginPath();ctx.arc(xAt(i),yAt(data24[i])+5,3,0,Math.PI*2);ctx.fill();
+        hiloItems.push({type:'ebb',time:`${String(i).padStart(2,'0')}:00`,cm:data24[i]});
+      }
+    }
+  }
+  hiloItems.sort((a,b)=>a.time.localeCompare(b.time));
+  hiloEl.innerHTML=hiloItems.map(t=>`<div class="hilo-item"><span>${t.type==='flood'?'🌊':'🏖'}</span><span>${t.type==='flood'?'満潮':'干潮'}</span><span class="hilo-time">${t.time}</span><span class="hilo-cm">${Math.round(t.cm)}cm</span></div>`).join('');
+
+  // 現在位置マーカー
+  const hf=getHF();
+  const nowCm = useReal ? getTideAtMin(locKey, Math.round(hf*60)) : interp(data24, hf);
+  const xNow=xAt(hf), yNow=yAt(nowCm);
+  document.getElementById('tideNowLine').style.left=xNow+'px';
+  const dot=document.getElementById('tideNowDot');
+  dot.style.left=xNow+'px';dot.style.top=yNow+'px';
+
+  // 上げ下げ計算
+  calcTidePhase(locKey, data24, useReal);
+}
+
+function calcTidePhase(locKey, data24, useReal){
+  const hf=getHF();
+  const nowMin=Math.round(hf*60);
+  const STEP=5;
+  function vAt(m){
+    if(useReal){const v=getTideAtMin(locKey,m%1440);return v!==null?v:interp(data24,(m/60)%24);}
+    return interp(data24,(m/60)%24);
+  }
+  const rising=vAt(nowMin+STEP)>=vAt(nowMin);
+  let turnMin=null,ps=rising?1:-1;
+  for(let m=nowMin+STEP;m<=nowMin+720;m+=STEP){const s=vAt(m+STEP)>=vAt(m)?1:-1;if(s!==ps){turnMin=m;break;}ps=s;}
+  let elaps=null,ps2=rising?1:-1;
+  for(let m=nowMin-STEP;m>=nowMin-720;m-=STEP){const s=vAt(m+STEP)>=vAt(m)?1:-1;if(s!==ps2){elaps=Math.round(nowMin-(m+STEP));break;}ps2=s;}
+  document.getElementById('phaseBadge').className='tide-phase-badge '+(rising?'rising':'falling');
+  document.getElementById('phaseArrow').textContent=rising?'↑':'↓';
+  document.getElementById('phaseLabel').textContent=rising?'上げ潮':'下げ潮';
+  document.getElementById('phaseElapsed').textContent=(elaps!==null?elaps:'—')+'分';
+  document.getElementById('phaseRemain').textContent=turnMin!==null?Math.round(turnMin-nowMin):'—';
+}
+
+function updateSea(locKey){
+  const loc=LOC[locKey];
+  const hf=getHF();
+  const wd=interpDeg(loc.windDeg,hf);
+  document.getElementById('windArrow').style.transform=`rotate(${wd}deg)`;
+  document.getElementById('windDir').textContent=d2jp(wd);
+  document.getElementById('windSpd').textContent=interp(loc.windSpd,hf).toFixed(1)+' m/s';
+  const cd=interpDeg(loc.currDeg,hf);
+  document.getElementById('currDir').textContent=loc.currDir[Math.floor(hf)%24];
+  document.getElementById('currSpd').textContent=interp(loc.currSpd,hf).toFixed(1)+' kt';
+  document.getElementById('currArrow').style.transform=`rotate(${cd-90}deg)`;
+  drawTide(locKey);
+}
+
+let curLoc='mukogawa';
+document.querySelectorAll('.loc-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.loc-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');curLoc=tab.dataset.loc;updateSea(curLoc);
+  });
+});
+
+// ===== タイマー（バックグラウンド対応）=====
+const CIRC=2*Math.PI*85;
+let ivMin=20,totalSec=1200,remaining=1200,running=false,tmr=null,cnt=0,startedAt=null;
+
+function fmt(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
+function updateRing(){
+  const r=Math.max(0,remaining)/totalSec;
+  const prog=document.getElementById('ringProg');
+  prog.style.strokeDasharray=CIRC;prog.style.strokeDashoffset=CIRC*(1-r);
+  const w=remaining<=60;
+  prog.style.stroke=w?'var(--warn)':'var(--biolum)';
+  prog.style.filter=w?'drop-shadow(0 0 8px var(--warn))':'drop-shadow(0 0 6px var(--biolum))';
+  document.getElementById('timeDsp').classList.toggle('warn',w);
+  document.getElementById('timeDsp').textContent=fmt(Math.max(0,remaining));
+}
+function updatePresets(){document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.v)===ivMin));}
+function setIv(m){
+  if(running)return;
+  ivMin=Math.max(1,Math.min(120,m));totalSec=ivMin*60;remaining=totalSec;
+  document.getElementById('ivVal').textContent=ivMin;updateRing();updatePresets();
+}
+
+function syncBG(){
+  if(!running||!startedAt)return;
+  const elapsed=Math.floor((Date.now()-startedAt)/1000);
+  const newCnt=Math.floor(elapsed/totalSec);
+  if(newCnt>cnt){
+    const missed=newCnt-cnt;cnt=newCnt;
+    document.getElementById('cntNum').textContent=cnt;
+    for(let i=0;i<missed;i++){
+      const item=document.createElement('div');item.className='hist-item';
+      item.textContent=`バックグラウンド中 — ${cnt-missed+i+1}回目のチェンジ`;
+      document.getElementById('histBox').insertBefore(item,document.getElementById('histBox').firstChild);
+    }
+  }
+  remaining=totalSec-(elapsed%totalSec);updateRing();
+}
+
+function flash(){const f=document.getElementById('alertFlash');[0,400,800].forEach(t=>setTimeout(()=>{f.classList.add('on');setTimeout(()=>f.classList.remove('on'),300);},t));}
+function beep(){try{const ac=new(window.AudioContext||window.webkitAudioContext)();[0,.22,.44].forEach((t,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=i<2?880:1200;o.type='sine';g.gain.setValueAtTime(0,ac.currentTime+t);g.gain.linearRampToValueAtTime(.3,ac.currentTime+t+.05);g.gain.linearRampToValueAtTime(0,ac.currentTime+t+.25);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.3);});}catch(e){}}
+function vibrate(){if(navigator.vibrate)navigator.vibrate([400,100,400,100,600]);}
+
+function onComplete(){
+  cnt++;document.getElementById('cntNum').textContent=cnt;
+  const n=new Date();const ts=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  const item=document.createElement('div');item.className='hist-item';
+  item.textContent=`${ts} — ${cnt}回目のチェンジ`;
+  document.getElementById('histBox').insertBefore(item,document.getElementById('histBox').firstChild);
+  beep();vibrate();flash();
+  document.getElementById('statusTxt').textContent='🎣 ルアーチェンジ！';
+  document.getElementById('statusTxt').className='status-txt chg';
+  clearInterval(tmr);
+  setTimeout(()=>{
+    if(running){
+      document.getElementById('statusTxt').textContent='カウント中...';
+      document.getElementById('statusTxt').className='status-txt run';
+      tmr=setInterval(tick,1000);
+    }
+  },3000);
+}
+
+function tick(){
+  if(startedAt){
+    const elapsed=Math.floor((Date.now()-startedAt)/1000);
+    const newCnt=Math.floor(elapsed/totalSec);
+    if(newCnt>cnt){clearInterval(tmr);onComplete();return;}
+    remaining=totalSec-(elapsed%totalSec);
+  } else {remaining--;}
+  updateRing();
+  if(remaining<=0){remaining=0;updateRing();clearInterval(tmr);onComplete();}
+}
+
+document.getElementById('startBtn').addEventListener('click',()=>{
+  if(!running){
+    running=true;
+    startedAt=Date.now()-(totalSec-remaining)*1000;
+    document.getElementById('startBtn').textContent='PAUSE';
+    document.getElementById('statusTxt').textContent='カウント中...';
+    document.getElementById('statusTxt').className='status-txt run';
+    document.getElementById('bgNote').textContent='※ 画面を閉じても戻ると自動補正';
+    tmr=setInterval(tick,1000);
+  }else{
+    running=false;clearInterval(tmr);startedAt=null;
+    document.getElementById('startBtn').textContent='START';
+    document.getElementById('statusTxt').textContent='一時停止中';
+    document.getElementById('statusTxt').className='status-txt';
+    document.getElementById('bgNote').textContent='';
+  }
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  running=false;clearInterval(tmr);startedAt=null;remaining=totalSec;
+  document.getElementById('startBtn').textContent='START';
+  document.getElementById('statusTxt').textContent='リセットしました';
+  document.getElementById('statusTxt').className='status-txt';
+  document.getElementById('bgNote').textContent='';updateRing();
+});
+document.getElementById('decBtn').addEventListener('click',()=>setIv(ivMin-5));
+document.getElementById('incBtn').addEventListener('click',()=>setIv(ivMin+5));
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>setIv(parseInt(b.dataset.v))));
+
+// バックグラウンド復帰検知
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&running)syncBG();});
+window.addEventListener('focus',()=>{if(running)syncBG();});
+window.addEventListener('pageshow',()=>{if(running)syncBG();});
+
+// PWA
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// 初期化
+updateRing();updatePresets();
+loadTideJson().then(()=>updateSea(curLoc));
+setInterval(()=>updateSea(curLoc),60000);
+</script>
+</body>
+</html>
